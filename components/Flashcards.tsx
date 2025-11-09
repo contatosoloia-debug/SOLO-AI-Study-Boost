@@ -80,8 +80,10 @@ const Flashcards: React.FC = () => {
     if (viewState === 'setup') {
         return (
             <div>
-                <h1 className="text-3xl font-bold text-[#f9fafb]">Flashcards com IA</h1>
-                <p className="text-[#9ca3af] mt-1 mb-6">Crie flashcards sobre qualquer assunto para otimizar sua revisão.</p>
+                <div className="text-center">
+                    <h1 className="text-3xl font-bold text-[#f9fafb]">Flashcards com IA</h1>
+                    <p className="text-[#9ca3af] mt-1 mb-6">Crie flashcards sobre qualquer assunto para otimizar sua revisão.</p>
+                </div>
                 <div className="max-w-lg mx-auto bg-[#1f2937] p-6 rounded-lg border border-[#374151]">
                      <div className="space-y-6">
                         <div>

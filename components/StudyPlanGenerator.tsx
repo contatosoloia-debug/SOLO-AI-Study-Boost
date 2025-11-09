@@ -94,7 +94,7 @@ const StudyPlanGenerator: React.FC = () => {
     if (generatedPlan && !isLoading) {
         return (
             <div className="bg-[#1f2937] p-6 rounded-lg border border-[#374151]">
-                <h2 className="text-2xl font-bold mb-4">Seu Plano de Estudos Personalizado</h2>
+                <h2 className="text-2xl font-bold mb-4 text-center">Seu Plano de Estudos Personalizado</h2>
                 <div className="overflow-x-auto">
                     <table className="w-full text-left">
                         <thead className="bg-[#374151]">
@@ -147,8 +147,10 @@ const StudyPlanGenerator: React.FC = () => {
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-[#f9fafb]">Gerador de Plano de Estudos</h1>
-            <p className="text-[#9ca3af] mt-1 mb-6">Preencha os campos abaixo para a IA criar um plano sob medida para você.</p>
+            <div className="text-center">
+                <h1 className="text-3xl font-bold text-[#f9fafb]">Gerador de Plano de Estudos</h1>
+                <p className="text-[#9ca3af] mt-1 mb-6">Preencha os campos abaixo para a IA criar um plano sob medida para você.</p>
+            </div>
             <form onSubmit={handleSubmit} className="space-y-6 bg-[#1f2937] p-6 rounded-lg border border-[#374151]">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                      <div>

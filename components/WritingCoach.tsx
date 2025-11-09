@@ -36,14 +36,14 @@ const WritingCoach: React.FC = () => {
     
     if (analysis) {
         return (
-             <div className="space-y-6">
+             <div className="space-y-6 text-center">
                  <h1 className="text-3xl font-bold text-[#f9fafb]">Análise da sua Redação</h1>
                  <div className="bg-[#1f2937] p-6 rounded-lg border border-[#374151]">
                     <div className="text-center mb-8">
                         <p className="text-[#9ca3af]">Nota Geral</p>
                         <p className="text-6xl font-bold text-[#3b82f6]">{analysis.notaGeral}</p>
                     </div>
-                    <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid md:grid-cols-2 gap-6 text-left">
                         <div className="bg-[#374151] p-4 rounded-lg">
                             <h3 className="font-semibold text-[#22c55e] mb-2">Pontos Fortes</h3>
                             <ul className="list-disc list-inside space-y-1 text-[#9ca3af]">
@@ -57,7 +57,7 @@ const WritingCoach: React.FC = () => {
                             </ul>
                         </div>
                     </div>
-                    <div className="mt-6 bg-[#374151] p-4 rounded-lg">
+                    <div className="mt-6 bg-[#374151] p-4 rounded-lg text-left">
                         <h3 className="font-semibold text-[#f9fafb] mb-2">Exemplo Revisado</h3>
                         <p className="text-[#9ca3af] italic">"{analysis.paragrafoRevisado}"</p>
                     </div>
@@ -71,8 +71,10 @@ const WritingCoach: React.FC = () => {
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-[#f9fafb]">Corretor de Redação (PRO)</h1>
-            <p className="text-[#9ca3af] mt-1 mb-6">Receba uma análise detalhada da sua redação para aprimorar sua escrita.</p>
+            <div className="text-center">
+                <h1 className="text-3xl font-bold text-[#f9fafb]">Corretor de Redação (PRO)</h1>
+                <p className="text-[#9ca3af] mt-1 mb-6">Receba uma análise detalhada da sua redação para aprimorar sua escrita.</p>
+            </div>
             <div className="bg-[#1f2937] p-6 rounded-lg border border-[#374151] space-y-4">
                 <div>
                     <label htmlFor="writingType" className="block text-sm font-medium text-[#9ca3af]">Tipo de Redação</label>

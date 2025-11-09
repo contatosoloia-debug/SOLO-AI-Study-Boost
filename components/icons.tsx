@@ -9,7 +9,6 @@ const iconProps = {
   strokeLinejoin: "round" as const,
 };
 
-// FIX: Update all icon components to accept SVG props to allow overriding className.
 export const HomeIcon = (props: React.SVGAttributes<SVGSVGElement>) => (
   <svg {...iconProps} {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
     <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" />
@@ -111,5 +110,13 @@ export const DragHandleIcon = (props: React.SVGAttributes<SVGSVGElement>) => (
         <circle cx="12" cy="12" r="1" />
         <circle cx="12" cy="5" r="1" />
         <circle cx="12" cy="19" r="1" />
+    </svg>
+);
+
+export const DownloadIcon = (props: React.SVGAttributes<SVGSVGElement>) => (
+    <svg {...iconProps} {...props} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+        <polyline points="7 10 12 15 17 10" />
+        <line x1="12" y1="15" x2="12" y2="3" />
     </svg>
 );

@@ -9,7 +9,6 @@ interface SidebarProps {
   setOpen: (isOpen: boolean) => void;
 }
 
-// FIX: Add 'as const' to ensure `item.view` is typed as a literal, not a generic string.
 const navItems = [
   { view: 'home', label: 'Painel Principal', icon: HomeIcon, pro: false },
   { view: 'progress', label: 'Progresso Geral', icon: ProgressIcon, pro: false },
@@ -31,7 +30,6 @@ const Sidebar: React.FC<SidebarProps> = ({ currentView, setView, isOpen, setOpen
     }
   };
 
-  // FIX: Changed type of `item` to be any element of `navItems` array, not just the first.
   const NavLink: React.FC<{ item: (typeof navItems)[number] }> = ({ item }) => {
     const isActive = currentView === item.view;
     return (

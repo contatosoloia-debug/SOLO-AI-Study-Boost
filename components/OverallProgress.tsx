@@ -1,110 +1,145 @@
-import React, { useState, useEffect } from 'react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer, CartesianGrid } from 'recharts';
 
-interface QuizHistoryEntry {
+import React, { useState, useEffect } from 'react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, LineChart, Line } from 'recharts';
+
+interface QuizHistoryItem {
     discipline: string;
+    topic: string;
     score: number;
     totalQuestions: number;
     timestamp: number;
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-[#111827] p-4 border border-[#374151] rounded-lg shadow-lg">
-          <p className="font-bold text-[#f9fafb]">{label}</p>
-          <p className="text-[#3b82f6]">{`Precisão: ${payload[0].value}%`}</p>
-          <p className="text-[#9ca3af]">{`Questões respondidas: ${payload[0].payload.total}`}</p>
-        </div>
-      );
-    }
-    return null;
-};
+interface CalendarData {
+    [monthKey: string]: {
+        studiedDays: { [day: number]: boolean };
+        quote: string;
+    };
+}
 
 const OverallProgress: React.FC = () => {
-    const [totalQuestions, setTotalQuestions] = useState(0);
-    const [overallAccuracy, setOverallAccuracy] = useState(0);
-    const [subjectPerformance, setSubjectPerformance] = useState<{ name: string; acertos: number; total: number; precisao: number }[]>([]);
+    const [quizHistory, setQuizHistory] = useState<QuizHistoryItem[]>([]);
+    const [totalStudiedDays, setTotalStudiedDays] = useState(0);
 
     useEffect(() => {
-        const history: QuizHistoryEntry[] = JSON.parse(localStorage.getItem('quizHistory') || '[]');
-        if (history.length === 0) {
-            return;
+        // Load quiz history
+        const savedHistory = localStorage.getItem('quizHistory');
+        if (savedHistory) {
+            try {
+                const parsedHistory: QuizHistoryItem[] = JSON.parse(savedHistory);
+                // Sort by timestamp
+                parsedHistory.sort((a, b) => a.timestamp - b.timestamp);
+                setQuizHistory(parsedHistory);
+            } catch (e) {
+                console.error("Failed to parse quiz history", e);
+                setQuizHistory([]);
+            }
         }
 
-        const totalQs = history.reduce((acc, curr) => acc + curr.totalQuestions, 0);
-        const totalCorrect = history.reduce((acc, curr) => acc + curr.score, 0);
-        setTotalQuestions(totalQs);
-        setOverallAccuracy(totalQs > 0 ? Math.round((totalCorrect / totalQs) * 100) : 0);
-
-        const performanceMap = new Map<string, { score: number, totalQuestions: number }>();
-        history.forEach(item => {
-            const normalizedDiscipline = item.discipline.charAt(0).toUpperCase() + item.discipline.slice(1).toLowerCase();
-            const existing = performanceMap.get(normalizedDiscipline) || { score: 0, totalQuestions: 0 };
-            performanceMap.set(normalizedDiscipline, {
-                score: existing.score + item.score,
-                totalQuestions: existing.totalQuestions + item.totalQuestions,
-            });
-        });
-
-        const performanceData = Array.from(performanceMap.entries()).map(([name, data]) => ({
-            name,
-            acertos: data.score,
-            total: data.totalQuestions,
-            precisao: data.totalQuestions > 0 ? Math.round((data.score / data.totalQuestions) * 100) : 0,
-        })).sort((a,b) => b.precisao - a.precisao);
-        
-        setSubjectPerformance(performanceData);
+        // Load calendar data
+        const savedCalendar = localStorage.getItem('motivationalCalendar');
+        if (savedCalendar) {
+            try {
+                const calendarData: CalendarData = JSON.parse(savedCalendar);
+                let totalDays = 0;
+                Object.values(calendarData).forEach(monthData => {
+                    totalDays += Object.values(monthData.studiedDays).filter(Boolean).length;
+                });
+                setTotalStudiedDays(totalDays);
+            } catch(e) {
+                console.error("Failed to parse calendar data", e);
+                setTotalStudiedDays(0);
+            }
+        }
     }, []);
+    
+    const overallScore = quizHistory.reduce((acc, item) => acc + item.score, 0);
+    const totalQuestions = quizHistory.reduce((acc, item) => acc + item.totalQuestions, 0);
+    const averagePercentage = totalQuestions > 0 ? Math.round((overallScore / totalQuestions) * 100) : 0;
+    
+    const chartData = quizHistory.map(item => ({
+        name: new Date(item.timestamp).toLocaleDateString('pt-BR'),
+        topic: item.topic,
+        score: Math.round((item.score / item.totalQuestions) * 100)
+    }));
+    
+    const performanceByDiscipline = quizHistory.reduce((acc, item) => {
+        if (!acc[item.discipline]) {
+            acc[item.discipline] = { totalScore: 0, totalQuestions: 0, count: 0 };
+        }
+        acc[item.discipline].totalScore += item.score;
+        acc[item.discipline].totalQuestions += item.totalQuestions;
+        acc[item.discipline].count += 1;
+        return acc;
+    }, {} as {[key: string]: { totalScore: number, totalQuestions: number, count: number }});
 
-    if (totalQuestions === 0) {
-        return (
-            <div>
-                <h1 className="text-3xl font-bold text-[#f9fafb]">Progresso Geral</h1>
-                <div className="mt-6 bg-[#1f2937] p-8 rounded-lg border border-[#374151] text-center">
-                    <h2 className="text-xl font-semibold">Nenhum dado encontrado</h2>
-                    <p className="text-[#9ca3af] mt-2">
-                        Parece que você ainda não completou nenhum simulado. Vá para o "Simulado de Questões" para começar a acompanhar seu progresso!
-                    </p>
-                </div>
-            </div>
-        );
-    }
+    const disciplineChartData = Object.entries(performanceByDiscipline).map(([discipline, data]) => ({
+        discipline,
+        average: data.totalQuestions > 0 ? Math.round((data.totalScore / data.totalQuestions) * 100) : 0,
+        simulados: data.count,
+    }));
+
 
     return (
         <div className="space-y-8">
-            <div>
-                <h1 className="text-3xl font-bold text-[#f9fafb]">Progresso Geral</h1>
-                <p className="text-[#9ca3af] mt-1">Acompanhe seu desempenho nos estudos.</p>
+            <div className="text-center">
+                <h1 className="text-3xl font-bold text-[#f9fafb]">Seu Progresso Geral</h1>
+                <p className="text-[#9ca3af] mt-1">Acompanhe sua evolução e identifique pontos de melhoria.</p>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-[#1f2937] p-6 rounded-lg border border-[#374151] shadow-lg">
-                    <h3 className="font-semibold text-[#f9fafb]">Total de Questões</h3>
-                    <p className="text-4xl font-bold text-[#3b82f6] mt-2">{totalQuestions}</p>
-                    <p className="text-[#9ca3af]">respondidas em todos os simulados.</p>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-[#1f2937] p-6 rounded-lg border border-[#374151]">
+                    <h3 className="font-semibold text-[#9ca3af]">Média Geral de Acertos</h3>
+                    <p className="text-4xl font-bold text-[#3b82f6] mt-2">{averagePercentage}%</p>
                 </div>
-                <div className="bg-[#1f2937] p-6 rounded-lg border border-[#374151] shadow-lg">
-                    <h3 className="font-semibold text-[#f9fafb]">Precisão Geral</h3>
-                    <p className="text-4xl font-bold text-[#3b82f6] mt-2">{overallAccuracy}%</p>
-                    <p className="text-[#9ca3af]">de acertos em todas as disciplinas.</p>
+                <div className="bg-[#1f2937] p-6 rounded-lg border border-[#374151]">
+                    <h3 className="font-semibold text-[#9ca3af]">Simulados Realizados</h3>
+                    <p className="text-4xl font-bold text-[#3b82f6] mt-2">{quizHistory.length}</p>
+                </div>
+                <div className="bg-[#1f2937] p-6 rounded-lg border border-[#374151]">
+                    <h3 className="font-semibold text-[#9ca3af]">Total de Dias Estudados</h3>
+                    <p className="text-4xl font-bold text-[#3b82f6] mt-2">{totalStudiedDays}</p>
                 </div>
             </div>
 
-            <div className="bg-[#1f2937] p-6 rounded-lg border border-[#374151] shadow-lg">
-                <h2 className="text-xl font-semibold text-[#f9fafb] mb-4">Desempenho por Disciplina</h2>
-                <div className="w-full h-80">
-                    <ResponsiveContainer>
-                        <BarChart data={subjectPerformance} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                            <XAxis dataKey="name" stroke="#9ca3af" />
-                            <YAxis stroke="#9ca3af" unit="%" />
-                            <Tooltip content={<CustomTooltip />} cursor={{fill: '#374151'}} />
-                            <Legend wrapperStyle={{ color: '#9ca3af' }}/>
-                            <Bar dataKey="precisao" name="Precisão" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                    </ResponsiveContainer>
-                </div>
+            <div className="bg-[#1f2937] p-6 rounded-lg border border-[#374151]">
+                <h3 className="text-xl font-semibold mb-4 text-center">Evolução dos Simulados</h3>
+                {chartData.length > 0 ? (
+                    <div className="w-full h-80">
+                        <ResponsiveContainer>
+                            <LineChart data={chartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                <XAxis dataKey="name" stroke="#9ca3af" />
+                                <YAxis stroke="#9ca3af" unit="%" />
+                                <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} />
+                                <Legend />
+                                <Line type="monotone" dataKey="score" name="Pontuação (%)" stroke="#3b82f6" strokeWidth={2} />
+                            </LineChart>
+                        </ResponsiveContainer>
+                    </div>
+                ) : (
+                    <p className="text-center text-[#9ca3af]">Nenhum histórico de simulado encontrado. Faça um simulado para ver seu progresso!</p>
+                )}
+            </div>
+            
+            <div className="bg-[#1f2937] p-6 rounded-lg border border-[#374151]">
+                <h3 className="text-xl font-semibold mb-4 text-center">Desempenho por Disciplina</h3>
+                {disciplineChartData.length > 0 ? (
+                    <div className="w-full h-80">
+                         <ResponsiveContainer>
+                            <BarChart data={disciplineChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                                <XAxis dataKey="discipline" stroke="#9ca3af" />
+                                <YAxis stroke="#9ca3af" unit="%" />
+                                <Tooltip contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151' }} />
+                                <Legend />
+                                <Bar dataKey="average" name="Média de Acertos (%)" fill="#3b82f6" />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </div>
+                ) : (
+                    <p className="text-center text-[#9ca3af]">Nenhum histórico de simulado encontrado.</p>
+                )}
             </div>
         </div>
     );

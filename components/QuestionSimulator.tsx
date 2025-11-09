@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { generateQuestions } from '../services/geminiService';
 import { QuizQuestion } from '../types';
@@ -91,8 +92,10 @@ const QuestionSimulator: React.FC = () => {
     if (quizState === 'setup') {
         return (
             <div>
-                <h1 className="text-3xl font-bold text-[#f9fafb]">Simulado de Questões</h1>
-                <p className="text-[#9ca3af] mt-1 mb-6">Teste seus conhecimentos com questões geradas por IA.</p>
+                <div className="text-center">
+                    <h1 className="text-3xl font-bold text-[#f9fafb]">Simulado de Questões</h1>
+                    <p className="text-[#9ca3af] mt-1 mb-6">Teste seus conhecimentos com questões geradas por IA.</p>
+                </div>
                 <div className="max-w-lg mx-auto bg-[#1f2937] p-6 rounded-lg border border-[#374151]">
                     <div className="space-y-6">
                         <div>

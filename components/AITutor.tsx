@@ -13,7 +13,7 @@ const AITutor: React.FC = () => {
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    const session = createChatSession(history);
+    const session = createChatSession();
     setChatSession(session);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -66,7 +66,7 @@ const AITutor: React.FC = () => {
 
   return (
     <div className="flex flex-col h-[calc(100vh-100px)] bg-[#1f2937] rounded-lg border border-[#374151] shadow-lg">
-      <div className="p-4 border-b border-[#374151]">
+      <div className="p-4 border-b border-[#374151] text-center">
         <h1 className="text-xl font-bold">Tutor IA</h1>
         <p className="text-sm text-[#9ca3af]">Converse com a IA para tirar dúvidas e aprender.</p>
       </div>

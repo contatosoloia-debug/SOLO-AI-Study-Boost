@@ -53,8 +53,10 @@ const MindMapGenerator: React.FC = () => {
     
     return (
         <div>
-            <h1 className="text-3xl font-bold text-[#f9fafb]">Gerador de Mapa Mental (PRO)</h1>
-            <p className="text-[#9ca3af] mt-1 mb-6">Visualize conceitos complexos de forma organizada e hierárquica.</p>
+            <div className="text-center">
+                <h1 className="text-3xl font-bold text-[#f9fafb]">Gerador de Mapa Mental (PRO)</h1>
+                <p className="text-[#9ca3af] mt-1 mb-6">Visualize conceitos complexos de forma organizada e hierárquica.</p>
+            </div>
             <div className="bg-[#1f2937] p-6 rounded-lg border border-[#374151]">
                 {!mindMap && (
                      <div className="flex gap-4">

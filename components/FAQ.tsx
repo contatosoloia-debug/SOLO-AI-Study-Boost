@@ -45,8 +45,10 @@ const FAQ: React.FC = () => {
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-[#f9fafb]">Perguntas Frequentes (FAQ)</h1>
-            <p className="text-[#9ca3af] mt-1 mb-6">Encontre respostas para as dúvidas mais comuns sobre a plataforma.</p>
+            <div className="text-center">
+                <h1 className="text-3xl font-bold text-[#f9fafb]">Perguntas Frequentes (FAQ)</h1>
+                <p className="text-[#9ca3af] mt-1 mb-6">Encontre respostas para as dúvidas mais comuns sobre a plataforma.</p>
+            </div>
             <div className="bg-[#1f2937] rounded-lg border border-[#374151] max-w-3xl mx-auto">
                 {faqData.map((item, index) => (
                     <AccordionItem

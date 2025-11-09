@@ -2,17 +2,20 @@ import React, { useState } from 'react';
 import { useAuth } from './hooks/useAuth';
 import Login from './components/Login';
 import Sidebar from './components/Sidebar';
+// FIx: Corrected import for Home component
 import Home from './components/Home';
 import StudyPlanGenerator from './components/StudyPlanGenerator';
 import AITutor from './components/AITutor';
 import QuestionSimulator from './components/QuestionSimulator';
 import Flashcards from './components/Flashcards';
+// Fix: Corrected import for MotivationalCalendar component
 import MotivationalCalendar from './components/MotivationalCalendar';
 import WritingCoach from './components/WritingCoach';
 import MindMapGenerator from './components/MindMapGenerator';
 import FAQ from './components/FAQ';
 import FloatingNotepad from './components/FloatingNotepad';
 import OverallProgress from './components/OverallProgress';
+// Fix: Corrected import for View type
 import { View } from './types';
 import { MenuIcon, XIcon } from './components/icons';
 

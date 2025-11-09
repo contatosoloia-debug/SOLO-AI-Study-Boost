@@ -1,28 +1,18 @@
 
-import { GoogleGenAI, Chat, GenerateContentResponse, Type } from "@google/genai";
-import { ChatMessage, Flashcard, MindMapNode, QuizQuestion, StudyPlan, WritingAnalysis } from '../types';
+import { GoogleGenAI, Chat, Type } from "@google/genai";
+import { StudyPlan, QuizQuestion, Flashcard, WritingAnalysis, MindMapNode, ExamEvent } from '../types';
 
-const API_KEY = process.env.API_KEY;
+const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
 
-if (!API_KEY) {
-    throw new Error("API_KEY environment variable not set");
-}
-
-const ai = new GoogleGenAI({ apiKey: API_KEY });
-
-// FIX: Removed unused and deprecated generationConfig object.
-
-// Helper to extract JSON from Gemini's markdown-formatted response
-const extractJson = <T,>(text: string): T | null => {
+// Helper function to parse JSON from AI response
+const parseJsonResponse = <T>(text: string | undefined): T | null => {
+    if (!text) return null;
     try {
-        const match = text.match(/```json\n([\s\S]*?)\n```/);
-        if (match && match[1]) {
-            return JSON.parse(match[1]) as T;
-        }
-        // Fallback for non-fenced JSON
-        return JSON.parse(text) as T;
-    } catch (error) {
-        console.error("Failed to parse JSON from Gemini response:", error);
+        // The API might return the JSON wrapped in markdown backticks.
+        const jsonString = text.replace(/^```json\s*|```$/g, '').trim();
+        return JSON.parse(jsonString);
+    } catch (e) {
+        console.error("Failed to parse JSON response:", e);
         console.error("Original text:", text);
         return null;
     }
@@ -31,16 +21,15 @@ const extractJson = <T,>(text: string): T | null => {
 export const getDailyTip = async (): Promise<string> => {
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: "Gere uma dica de estudo curta e inspiradora ou uma frase motivacional para um estudante brasileiro se preparando para concursos. Seja breve e direto.",
+        contents: "Gere uma dica de estudo curta e motivacional para um estudante brasileiro, com no máximo 25 palavras.",
     });
     return response.text;
 };
 
 export const generateStudyPlan = async (prompt: string): Promise<StudyPlan | null> => {
-    const fullPrompt = `${prompt}. A resposta DEVE ser um JSON array. Cada objeto no array deve ter as seguintes chaves: "Dia", "Disciplina", "Tópico" e "Atividade Sugerida". Não inclua nenhum texto ou formatação fora do JSON.`;
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
-        contents: fullPrompt,
+        contents: `${prompt}\n\n Responda EXCLUSIVAMENTE com um array JSON de objetos, onde cada objeto representa um dia e tem as chaves: "Dia", "Disciplina", "Tópico", "Atividade Sugerida".`,
         config: {
             responseMimeType: "application/json",
             responseSchema: {
@@ -48,84 +37,188 @@ export const generateStudyPlan = async (prompt: string): Promise<StudyPlan | nul
                 items: {
                     type: Type.OBJECT,
                     properties: {
-                        "Dia": { type: Type.STRING },
-                        "Disciplina": { type: Type.STRING },
-                        "Tópico": { type: Type.STRING },
-                        "Atividade Sugerida": { type: Type.STRING },
+                        Dia: { type: Type.STRING },
+                        Disciplina: { type: Type.STRING },
+                        Tópico: { type: Type.STRING },
+                        'Atividade Sugerida': { type: Type.STRING },
                     },
-                    required: ["Dia", "Disciplina", "Tópico", "Atividade Sugerida"]
-                }
-            }
-        }
-    });
-
-    try {
-        return JSON.parse(response.text) as StudyPlan;
-    } catch(e) {
-        console.error("Error parsing study plan JSON", e);
-        return null;
-    }
-};
-
-export const createChatSession = (history: ChatMessage[]): Chat => {
-    return ai.chats.create({
-        model: 'gemini-2.5-flash',
-        history,
-        config: {
-            systemInstruction: 'Você é um tutor IA para estudantes brasileiros. Seja amigável, didático e ajude a explicar conceitos complexos de forma simples.',
+                    required: ["Dia", "Disciplina", "Tópico", "Atividade Sugerida"],
+                },
+            },
         },
     });
+    return parseJsonResponse<StudyPlan>(response.text);
 };
 
+export const createChatSession = (): Chat => {
+    const chat = ai.chats.create({
+        model: 'gemini-2.5-flash',
+        config: {
+            systemInstruction: 'Você é um tutor de IA amigável e prestativo chamado Solo. Seu objetivo é ajudar estudantes a entenderem conceitos complexos de forma clara e concisa. Seja paciente, encorajador e use analogias simples sempre que possível. Você está conversando em português do Brasil.',
+        },
+    });
+    return chat;
+};
 
-export const generateQuestions = async (topic: string, subject: string, count: number): Promise<QuizQuestion[] | null> => {
-    const prompt = `Gere ${count} questões de múltipla escolha sobre o tópico "${topic}" na disciplina de "${subject}". Formate a resposta como um JSON array. Cada objeto deve ter: 'pergunta' (string), 'opcoes' (array de 4 strings), e 'respostaCorreta' (índice da resposta correta, de 0 a 3).`;
+export const generateQuestions = async (topic: string, discipline: string, numQuestions: number): Promise<QuizQuestion[] | null> => {
+    const prompt = `Gere ${numQuestions} questões de múltipla escolha sobre o tópico "${topic}" da disciplina "${discipline}".
+    As questões devem ser no estilo de vestibulares brasileiros, com 4 opções de resposta.
+    Responda EXCLUSIVAMENTE com um array JSON de objetos. Cada objeto deve ter as seguintes chaves:
+    - "pergunta": a pergunta (string).
+    - "opcoes": um array de 4 strings com as opções.
+    - "respostaCorreta": o índice (0 a 3) da resposta correta no array de opções (number).`;
+
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
-        config: { responseMimeType: "application/json" }
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.ARRAY,
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        pergunta: { type: Type.STRING },
+                        opcoes: { type: Type.ARRAY, items: { type: Type.STRING } },
+                        respostaCorreta: { type: Type.INTEGER },
+                    },
+                    required: ["pergunta", "opcoes", "respostaCorreta"],
+                },
+            },
+        },
     });
-    return extractJson<QuizQuestion[]>(response.text);
+
+    return parseJsonResponse<QuizQuestion[]>(response.text);
 };
 
+export const generateFlashcards = async (topic: string, discipline: string, numFlashcards: number): Promise<Flashcard[] | null> => {
+    const prompt = `Crie ${numFlashcards} flashcards sobre o tópico "${topic}" da disciplina "${discipline}".
+    Cada flashcard deve ter uma pergunta e uma resposta curta e direta.
+    Responda EXCLUSIVAMENTE com um array JSON de objetos. Cada objeto deve ter as seguintes chaves:
+    - "pergunta": a frente do flashcard (string).
+    - "resposta": o verso do flashcard (string).`;
 
-export const generateFlashcards = async (topic: string, subject: string, count: number): Promise<Flashcard[] | null> => {
-    const prompt = `Crie ${count} flashcards sobre "${topic}" em "${subject}". A resposta deve ser um JSON array onde cada objeto tem 'pergunta' e 'resposta'.`;
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
-        config: { responseMimeType: "application/json" }
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.ARRAY,
+                items: {
+                    type: Type.OBJECT,
+                    properties: {
+                        pergunta: { type: Type.STRING },
+                        resposta: { type: Type.STRING },
+                    },
+                    required: ["pergunta", "resposta"],
+                },
+            },
+        },
     });
-    return extractJson<Flashcard[]>(response.text);
+
+    return parseJsonResponse<Flashcard[]>(response.text);
 };
 
-export const generateCalendarMotivation = async (month: number, year: number): Promise<Record<string, string> | null> => {
-    const daysInMonth = new Date(year, month + 1, 0).getDate();
-    const prompt = `Gere ${daysInMonth} mensagens motivacionais ou dicas de estudo curtas para um estudante, uma para cada dia do mês. A resposta deve ser um objeto JSON onde a chave é o dia (1, 2, 3...) e o valor é a mensagem.`;
+export const analyzeWriting = async (text: string, writingType: string): Promise<WritingAnalysis | null> => {
+    const prompt = `Analise a seguinte redação para o tipo "${writingType}". O texto é: "${text}".
+    Avalie a redação e forneça um feedback detalhado.
+    Responda EXCLUSIVAMENTE com um objeto JSON com as seguintes chaves:
+    - "notaGeral": uma nota de 0 a 1000 (number).
+    - "pontosFortes": um array de strings com os principais acertos.
+    - "areasParaMelhorar": um array de strings com sugestões de melhoria.
+    - "paragrafoRevisado": reescreva um parágrafo do texto original, aplicando as melhorias sugeridas (string).`;
+
     const response = await ai.models.generateContent({
-        model: 'gemini-2.5-flash',
+        model: 'gemini-2.5-pro', // Using a more advanced model for a complex task
         contents: prompt,
-        config: { responseMimeType: "application/json" }
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    notaGeral: { type: Type.INTEGER },
+                    pontosFortes: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    areasParaMelhorar: { type: Type.ARRAY, items: { type: Type.STRING } },
+                    paragrafoRevisado: { type: Type.STRING },
+                },
+                required: ["notaGeral", "pontosFortes", "areasParaMelhorar", "paragrafoRevisado"],
+            },
+        },
     });
-    return extractJson<Record<string, string>>(response.text);
+
+    return parseJsonResponse<WritingAnalysis>(response.text);
 };
 
-export const analyzeWriting = async (text: string, type: string): Promise<WritingAnalysis | null> => {
-    const prompt = `Analise a seguinte redação do tipo "${type}":\n\n"${text}"\n\nForneça uma análise estruturada como um objeto JSON com as chaves: 'notaGeral' (0-1000), 'pontosFortes' (array de strings), 'areasParaMelhorar' (array de strings), e 'paragrafoRevisado' (uma versão melhorada de um parágrafo).`;
-    const response = await ai.models.generateContent({
-        model: 'gemini-2.5-pro',
-        contents: prompt,
-        config: { responseMimeType: "application/json" }
-    });
-    return extractJson<WritingAnalysis>(response.text);
-};
 
 export const generateMindMap = async (topic: string): Promise<MindMapNode | null> => {
-    const prompt = `Crie uma estrutura de mapa mental para o tópico central "${topic}". A resposta deve ser um objeto JSON aninhado. O objeto raiz deve ter 'id' (string), 'topic' (string), e 'children' (um array de objetos com a mesma estrutura). Crie 2 a 3 níveis de profundidade.`;
+    const prompt = `Crie uma estrutura de dados para um mapa mental sobre o tópico "${topic}".
+    A estrutura deve ser um objeto JSON aninhado. O objeto raiz e cada filho devem ter as seguintes chaves:
+    - "id": uma string de identificação única (ex: "1", "1.1", "1.1.2").
+    - "topic": o nome do tópico (string).
+    - "children": um array de objetos filhos (pode ser um array vazio).
+    A profundidade máxima deve ser de 3 níveis.
+    Responda EXCLUSIVAMENTE com o objeto JSON.`;
+
     const response = await ai.models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
-        config: { responseMimeType: "application/json" }
+        config: {
+            responseMimeType: "application/json",
+            responseSchema: {
+                type: Type.OBJECT,
+                properties: {
+                    id: { type: Type.STRING },
+                    topic: { type: Type.STRING },
+                    children: {
+                        type: Type.ARRAY,
+                        items: {
+                            type: Type.OBJECT,
+                            properties: {
+                                id: { type: Type.STRING },
+                                topic: { type: Type.STRING },
+                                children: {
+                                    type: Type.ARRAY,
+                                    items: {
+                                        type: Type.OBJECT,
+                                        properties: {
+                                            id: { type: Type.STRING },
+                                            topic: { type: Type.STRING },
+                                            // Fix: Removed invalid recursive 'children' property to adhere to max depth and schema rules.
+                                            // The 'children' property is optional for nested nodes, so omitting it here is valid.
+                                        },
+                                        required: ["id", "topic"]
+                                    }
+                                }
+                            },
+                            required: ["id", "topic"]
+                        }
+                    }
+                },
+                required: ["id", "topic", "children"],
+            },
+        },
     });
-    return extractJson<MindMapNode>(response.text);
+
+    return parseJsonResponse<MindMapNode>(response.text);
+};
+
+export const findExamDates = async (query: string): Promise<ExamEvent[] | null> => {
+    const prompt = `Usando a busca na web, encontre as datas de provas para "${query}".
+    Se uma prova tem múltiplas datas (ex: 1º e 2º dia), crie uma entrada para cada uma.
+    Responda EXCLUSIVAMENTE com um array JSON de objetos. Cada objeto deve ter as chaves:
+    - "name": o nome completo do evento/prova (string).
+    - "date": a data no formato "YYYY-MM-DD" (string).
+    Se nenhuma data for encontrada, retorne um array vazio.`;
+
+    // Fix: Moved `tools` into `config` and removed `responseMimeType` and `responseSchema` as they are incompatible with the googleSearch tool.
+    const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt,
+        config: {
+            tools: [{ googleSearch: {} }],
+        },
+    });
+
+    return parseJsonResponse<ExamEvent[]>(response.text);
 };
