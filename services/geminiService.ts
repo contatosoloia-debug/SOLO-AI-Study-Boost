@@ -2,7 +2,18 @@
 import { GoogleGenAI, Chat, Type } from "@google/genai";
 import { StudyPlan, QuizQuestion, Flashcard, WritingAnalysis, MindMapNode, ExamEvent } from '../types';
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY! });
+let ai: GoogleGenAI | null = null;
+
+const getAI = () => {
+  if (!ai) {
+    const apiKey = process.env.API_KEY;
+    if (!apiKey) {
+      throw new Error("API_KEY environment variable is not set. Please add your Google Generative AI API key to the .env file.");
+    }
+    ai = new GoogleGenAI({ apiKey });
+  }
+  return ai;
+};
 
 // Helper function to parse JSON from AI response
 const parseJsonResponse = <T>(text: string | undefined): T | null => {
@@ -19,7 +30,7 @@ const parseJsonResponse = <T>(text: string | undefined): T | null => {
 };
 
 export const getDailyTip = async (): Promise<string> => {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
         model: 'gemini-2.5-flash',
         contents: "Gere uma dica de estudo curta e motivacional para um estudante brasileiro, com no máximo 25 palavras.",
     });
@@ -27,7 +38,7 @@ export const getDailyTip = async (): Promise<string> => {
 };
 
 export const generateStudyPlan = async (prompt: string): Promise<StudyPlan | null> => {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
         model: 'gemini-2.5-flash',
         contents: `${prompt}\n\n Responda EXCLUSIVAMENTE com um array JSON de objetos, onde cada objeto representa um dia e tem as chaves: "Dia", "Disciplina", "Tópico", "Atividade Sugerida".`,
         config: {
@@ -51,7 +62,7 @@ export const generateStudyPlan = async (prompt: string): Promise<StudyPlan | nul
 };
 
 export const createChatSession = (): Chat => {
-    const chat = ai.chats.create({
+    const chat = getAI().chats.create({
         model: 'gemini-2.5-flash',
         config: {
             systemInstruction: 'Você é um tutor de IA amigável e prestativo chamado Solo. Seu objetivo é ajudar estudantes a entenderem conceitos complexos de forma clara e concisa. Seja paciente, encorajador e use analogias simples sempre que possível. Você está conversando em português do Brasil.',
@@ -68,7 +79,7 @@ export const generateQuestions = async (topic: string, discipline: string, numQu
     - "opcoes": um array de 4 strings com as opções.
     - "respostaCorreta": o índice (0 a 3) da resposta correta no array de opções (number).`;
 
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
@@ -98,7 +109,7 @@ export const generateFlashcards = async (topic: string, discipline: string, numF
     - "pergunta": a frente do flashcard (string).
     - "resposta": o verso do flashcard (string).`;
 
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
@@ -129,7 +140,7 @@ export const analyzeWriting = async (text: string, writingType: string): Promise
     - "areasParaMelhorar": um array de strings com sugestões de melhoria.
     - "paragrafoRevisado": reescreva um parágrafo do texto original, aplicando as melhorias sugeridas (string).`;
 
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
         model: 'gemini-2.5-pro', // Using a more advanced model for a complex task
         contents: prompt,
         config: {
@@ -160,7 +171,7 @@ export const generateMindMap = async (topic: string): Promise<MindMapNode | null
     A profundidade máxima deve ser de 3 níveis.
     Responda EXCLUSIVAMENTE com o objeto JSON.`;
 
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
@@ -212,7 +223,7 @@ export const findExamDates = async (query: string): Promise<ExamEvent[] | null> 
     Se nenhuma data for encontrada, retorne um array vazio.`;
 
     // Fix: Moved `tools` into `config` and removed `responseMimeType` and `responseSchema` as they are incompatible with the googleSearch tool.
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
         model: 'gemini-2.5-flash',
         contents: prompt,
         config: {
